@@ -1,0 +1,8 @@
+/.venv
+/chats
+/frames
+/downloads
+/svgs
+*.mp4
+*.png
+*.xml
