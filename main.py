@@ -1,18 +1,31 @@
 import requests
 import os 
+from dataclasses import dataclass
 from playwright.sync_api import sync_playwright
 import xml.etree.ElementTree as ET
 import cairosvg
 import html
+from io import BytesIO
 from PIL import Image
 import subprocess
 import shutil
-import chat
+import video
 
 downloaded = set()
 # START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/8ab678ec2baf0cbcf1e315136084dcde33f2ebfd-1762191511958/"
 #START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/0a2f3631b67c280930e9b313a0d716ce597b7018-1762888173315"
 START_URL = input("Enter The Full Link of The Presentation: ")
+time = input("Enter The length of the video as a float example (1h30min -> use 1.5): ")
+VIDEO_LEN = float(time) if time else 0.0
+
+@dataclass
+class SVG:
+    href:str
+    start : float
+    end: float
+
+print(VIDEO_LEN)
+
 # MEDIA_EXTENSIONS = (".webm", ".xml", ".json")
 MEDIA_EXTENSIONS = (".webm",".xml", ".json", "shapes.svg")
 
@@ -47,11 +60,19 @@ def download_file(url):
             return
         downloaded.add(filename)
         print(f"Downloading: {url}")
-        r = requests.get(url, stream=True, timeout=20)
-        r.raise_for_status()
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(8192):
-                f.write(chunk)
+        if filename.endswith(".webm"):
+            cmd = []
+            if VIDEO_LEN > 0.20:
+                cmd = ["ffmpeg", "-ss", "0", "-i", url,"-t", f"{int(VIDEO_LEN * 3600)}", "-c", "copy", f"{path}"]
+            else:
+                cmd = ["ffmpeg", "-ss", "0", "-i", url, "-c", "copy", f"{path}"]
+            subprocess.run(cmd, check=True)     
+        else:
+            r = requests.get(url, stream=True, timeout=20)
+            r.raise_for_status()
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(8192):
+                    f.write(chunk)
     except Exception as e:
         print(f"Failed: {url} -> {e}")
 
@@ -103,53 +124,48 @@ file_name = html.unescape(root.find(".//bbb-context").text)
 for i in [":", "/", "?"]:
     file_name = file_name.replace(i, "_")
 
-if not os.path.exists("downloads/deskshare.webm"):
+def get_svgs()->list[SVG]:
     tree = ET.parse("downloads/shapes.svg")
     root = tree.getroot()
     images = root.findall(".//{http://www.w3.org/2000/svg}image")
-    in_list = []
-    out_list = []
-    href_list = []
+    svgs = []
     for e in images:
-        in_list.append(float(e.get("in")))
-        out_list.append(float(e.get("out")))
-        href_list.append(e.get("{http://www.w3.org/1999/xlink}href"))
+        svg = SVG(e.get("{http://www.w3.org/1999/xlink}href"), float(e.get("in")), float(e.get("out")))
+        svgs.append(svg)
+    return svgs
 
-    for svg in href_list:
-        print("https://visioconference.supmti.ac.ma/presentation/" + id + "/" + svg)
-        headers = {
-            "User-Agent": "Mozilla/5.0",  # mimic a real browser
-            }
+
+
+if not os.path.exists("downloads/deskshare.webm"):
+    svgs = get_svgs()
+    images = []
+    for i, svg in enumerate(svgs):
+        print("https://visioconference.supmti.ac.ma/presentation/" + id + "/" + svg.href)
+        # headers = {
+        #     "User-Agent": "Mozilla/5.0",  # mimic a real browser
+        #     }
         # response = requests.get("https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg, stream=True, timeout=40)
         # response = requests.get(START_URL + svg, headers=headers)
-        download_svgs("https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg)
+        # download_svgs("https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg.href)
         # svg_data = response.content
         # try:
         # concat_file = os.path.join(temp_dir, "file_list.txt")
-        dur = out_list[index] - in_list[index]
-        if index > 0:
+        if svg.href.endswith(".svg"):
+            svg_url = "https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg.href
+            print(svg_url)
             # converting svg into png whith high dpi 
-            png_data = cairosvg.svg2png(url=f"svgs/{index}.svg", write_to=f"svgs/{index}.png", dpi=300)
+            png_data = cairosvg.svg2png(url=svg_url, dpi=300)
+            
             # reading png insuring it's rgba
-            img = Image.open(f"svgs/{index}.png").convert("RGBA")
+            img = Image.open(BytesIO(png_data)).convert("RGBA")
             # creating new white background
             bg = Image.new("RGB", img.size, (255, 255, 255))  
             # put the img on top of the mask 
             bg.paste(img, mask=img.split()[3])  
             bg = bg.resize((1280, 720), Image.LANCZOS)
-            img_name = f"{index:04d}.png"
+            img_name = f"{i:04d}.png"
+            images.append((os.path.join("frames", img_name), svg.start, svg.end))
             bg.save(f"frames/{img_name}")
-            with open("file.txt", "a") as f:
-                f.write(f"file 'frames/{img_name}'\n")
-                f.write(f"duration {dur}\n")
-        else:
-            with open("file.txt", "a") as f:
-                f.write(f"file 'frames/0001.png'\n")
-                f.write(f"duration {dur}\n")
-        index += 1
-    img_name = f"{(index - 1):04d}.png"
-    with open("file.txt", "a") as f:
-        f.write(f"file 'frames/{img_name}'\n")
 
     # subprocess.run([
     #     "ffmpeg",
@@ -175,42 +191,55 @@ if not os.path.exists("downloads/deskshare.webm"):
     #     "-b:v", "0",
     #     "output.webm"
     # ])
-    try :
+# try:
+    # subprocess.run([
+    #     "ffmpeg", "-y",
+    #     "-f", "concat", "-safe", "0",
+    #     "-i", "file.txt",
+    #     "-r", "30",
+    #     "-c:v", "libx264",
+    #     "-preset", "ultrafast",  # ultrafast, superfast, faster, fast, medium, slow, slower
+    #     "-crf", "23",       # controls quality (lower = better)
+    #     "-pix_fmt", "yuv420p",
+    #     "-max_muxing_queue_size", "2048",
+    #     "output.mp4"
+    # ])
+
+    # subprocess.run([
+    #     "ffmpeg",
+    #     "-y",                  
+    #     "-i", "output.mp4",   
+    #     "-i", "downloads/webcams.webm",  
+    #     "-map", "0:v:0",       
+    #     "-map", "1:a:0",       
+    #     "-c:v", "copy",        
+    #     "-c:a", "copy",        
+    #     "-shortest",           
+    #     "pre_chat" + ".mp4"           
+    # ], check=True)
+    try:
         subprocess.run([
-            "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0",
-            "-i", "file.txt",
-            "-r", "30",
+            "ffmpeg",
+            "-y",
+            "-i", "downloads/webcams.webm",
+            "-vf", "scale=1280:720",
+            "-preset", "ultrafast",
             "-c:v", "libx264",
-            "-preset", "ultrafast",  # ultrafast, superfast, faster, fast, medium, slow, slower
-            "-crf", "23",       # controls quality (lower = better)
-            "-pix_fmt", "yuv420p",
-            "-max_muxing_queue_size", "2048",
+            "-c:a", "copy",
             "output.mp4"
         ])
 
-        subprocess.run([
-            "ffmpeg",
-            "-y",                  
-            "-i", "output.mp4",   
-            "-i", "downloads/webcams.webm",  
-            "-map", "0:v:0",       
-            "-map", "1:a:0",       
-            "-c:v", "copy",        
-            "-c:a", "copy",        
-            "-shortest",           
-            "pre_chat" + ".mp4"           
-        ], check=True)
-        chat.generate_all_chats(output_fname=file_name + ".mp4")
+        video.add_svgs(images, "output.mp4", "pre_chat.mp4")
+        video.generate_all_chats(output_fname=file_name + ".mp4")
     except Exception as e:
         empty_folder("downloads")
         empty_folder("frames") 
         empty_folder("chats") 
         empty_folder("svgs")   
         remove_file("output.mp4")
-        remove_file("file.txt")
-        print(e)
+        print(f"error occured {e}")
 else:
+    
     try: 
         subprocess.run([
             "ffmpeg",
@@ -224,15 +253,35 @@ else:
             "-shortest",           
             "pre_chat" + ".mp4"           
         ], check=True)
-        chat.generate_all_chats(output_fname=file_name + ".mp4")
+        svgs = get_svgs()
+        images = []
+        print(get_svgs())
+        for i, svg in enumerate(svgs):
+            if svg.href.endswith(".svg"):
+                svg_url = "https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg.href
+                print(svg_url)
+                # converting svg into png whith high dpi 
+                png_data = cairosvg.svg2png(url=svg_url, dpi=300)
+                
+                # reading png insuring it's rgba
+                img = Image.open(BytesIO(png_data)).convert("RGBA")
+                # creating new white background
+                bg = Image.new("RGB", img.size, (255, 255, 255))  
+                # put the img on top of the mask 
+                bg.paste(img, mask=img.split()[3])  
+                bg = bg.resize((1280, 720), Image.LANCZOS)
+                img_name = f"{i:04d}.png"
+                images.append((os.path.join("frames", img_name), svg.start, svg.end))
+                bg.save(f"frames/{img_name}")
+        video.add_svgs(images, "pre_chat.mp4")
+        video.generate_all_chats(output_fname=file_name + ".mp4")
     except Exception as e:
         empty_folder("downloads")
         empty_folder("frames") 
         empty_folder("chats") 
         empty_folder("svgs")   
         remove_file("output.mp4")
-        remove_file("file.txt")
-        print(e)
+        print(f"error occured {e}")
 
 
 empty_folder("downloads")
@@ -240,6 +289,10 @@ empty_folder("frames")
 empty_folder("chats") 
 empty_folder("svgs")   
 remove_file("output.mp4")
-remove_file("file.txt")
+remove_file("pre_chat.mp4")
 
-print("output.mp4 created")
+
+print("All done File Created")
+import subprocess, os
+
+

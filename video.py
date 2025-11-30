@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 import xml.etree.ElementTree as ET
+import os
 import subprocess
 
 @dataclass
@@ -10,6 +11,43 @@ class Chat:
     start : float
     end: float
     is_mod : bool
+
+def add_svgs(images, video_file, out_vid=None):
+
+    temp_out = video_file + ".tmp.mp4"   # temporary file
+
+    cmd = ["ffmpeg", "-y", "-i", video_file]
+
+    # Add all images as inputs
+    for img, _, _ in images:
+        cmd += ["-i", img]
+
+    filter_complex = ""
+    last = "[0:v]"
+
+    # images = [(img_path, start_time, end_time), ...]
+    for i, (img, start, end) in enumerate(images):
+        tag_out = f"[tmp{i+1}]" if i < len(images)-1 else ""
+        filter_complex += (
+            f"{last}[{i+1}:v]overlay=0:0:enable='between(t,{start},{end})'{tag_out};"
+        )
+        if tag_out:
+            last = tag_out
+    if out_vid:
+        cmd += ["-filter_complex", filter_complex.rstrip(";"), "-c:a", "copy", out_vid]
+        subprocess.run(cmd, check=True)
+    else:
+        cmd += ["-filter_complex", filter_complex.rstrip(";"), "-c:a", "copy", temp_out]
+        subprocess.run(cmd, check=True)
+        os.replace(temp_out, video_file)
+
+    # Replace original file
+
+
+    print("Done! Edited original file:", video_file)
+
+
+
 
 def add_chat(images, video_file, output_file, pad_left = 300):
 
@@ -142,4 +180,5 @@ def generate_all_chats(inpute_fname = "pre_chat.mp4" , output_fname = "output.mp
     print("Rendering the Chat")
     render_chat_panel(chats, input_fname=inpute_fname, output_fname=output_fname)
 
-generate_all_chats()
+# this was for testing purposes only 
+# generate_all_chats()

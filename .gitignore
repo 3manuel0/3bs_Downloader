@@ -1,6 +1,7 @@
 /.venv
 /chats
 /frames
+/__pycache__
 /downloads
 /svgs
 *.mp4
