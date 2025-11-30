@@ -12,8 +12,7 @@ import chat
 downloaded = set()
 # START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/8ab678ec2baf0cbcf1e315136084dcde33f2ebfd-1762191511958/"
 #START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/0a2f3631b67c280930e9b313a0d716ce597b7018-1762888173315"
-print("enter the link: ")
-START_URL = input()
+START_URL = input("Enter The Full Link of The Presentation: ")
 # MEDIA_EXTENSIONS = (".webm", ".xml", ".json")
 MEDIA_EXTENSIONS = (".webm",".xml", ".json", "shapes.svg")
 
