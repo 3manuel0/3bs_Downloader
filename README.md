@@ -1,7 +1,8 @@
 # Installing:
 
 **⚠️ WARNING:**
-first you must have `python3` and `ffmpeg` installed in your system.
+Project, still not finished yet.
+you need to have `python3` and `ffmpeg` on your system.
 
 change your path or open terminal on the script's folder then you create a virtual environment:
 

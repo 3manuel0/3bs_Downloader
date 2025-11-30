@@ -22,6 +22,24 @@ os.makedirs("downloads", exist_ok=True)
 os.makedirs("svgs", exist_ok=True)
 os.makedirs("frames", exist_ok=True)
 os.makedirs("chats", exist_ok=True)
+
+def empty_folder(folder):
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)  # delete file or symlink
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)  # delete folder
+        except Exception as e:
+            print(f"Failed to delete {file_path}: {e}")
+
+def remove_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print("File deleted.")
+
+
 def download_file(url):
     try:
         filename = url.split("/")[-1]
@@ -158,62 +176,65 @@ if not os.path.exists("downloads/deskshare.webm"):
     #     "-b:v", "0",
     #     "output.webm"
     # ])
-    subprocess.run([
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", "file.txt",
-        "-r", "30",
-        "-c:v", "libx264",
-        "-preset", "ultrafast",  # ultrafast, superfast, faster, fast, medium, slow, slower
-        "-crf", "23",       # controls quality (lower = better)
-        "-pix_fmt", "yuv420p",
-        "-max_muxing_queue_size", "2048",
-        "output.mp4"
-    ])
+    try :
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", "file.txt",
+            "-r", "30",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",  # ultrafast, superfast, faster, fast, medium, slow, slower
+            "-crf", "23",       # controls quality (lower = better)
+            "-pix_fmt", "yuv420p",
+            "-max_muxing_queue_size", "2048",
+            "output.mp4"
+        ])
 
-    subprocess.run([
-        "ffmpeg",
-        "-y",                  
-        "-i", "output.mp4",   
-        "-i", "downloads/webcams.webm",  
-        "-map", "0:v:0",       
-        "-map", "1:a:0",       
-        "-c:v", "copy",        
-        "-c:a", "copy",        
-        "-shortest",           
-        "pre_chat" + ".mp4"           
-    ], check=True)
-    chat.generate_all_chats(output_fname=file_name + ".mp4")
+        subprocess.run([
+            "ffmpeg",
+            "-y",                  
+            "-i", "output.mp4",   
+            "-i", "downloads/webcams.webm",  
+            "-map", "0:v:0",       
+            "-map", "1:a:0",       
+            "-c:v", "copy",        
+            "-c:a", "copy",        
+            "-shortest",           
+            "pre_chat" + ".mp4"           
+        ], check=True)
+        chat.generate_all_chats(output_fname=file_name + ".mp4")
+    except Exception as e:
+        empty_folder("downloads")
+        empty_folder("frames") 
+        empty_folder("chats") 
+        empty_folder("svgs")   
+        remove_file("output.mp4")
+        remove_file("file.txt")
+        print(e)
 else:
-    subprocess.run([
-        "ffmpeg",
-        "-y",                  
-        "-i", "downloads/deskshare.webm",   
-        "-i", "downloads/webcams.webm",  
-        "-map", "0:v:0",       
-        "-map", "1:a:0",       
-        "-c:v", "copy",        
-        "-c:a", "copy",        
-        "-shortest",           
-        "pre_chat" + ".mp4"           
-    ], check=True)
-    chat.generate_all_chats(output_fname=file_name + ".mp4")
+    try: 
+        subprocess.run([
+            "ffmpeg",
+            "-y",                  
+            "-i", "downloads/deskshare.webm",   
+            "-i", "downloads/webcams.webm",  
+            "-map", "0:v:0",       
+            "-map", "1:a:0",       
+            "-c:v", "copy",        
+            "-c:a", "copy",        
+            "-shortest",           
+            "pre_chat" + ".mp4"           
+        ], check=True)
+        chat.generate_all_chats(output_fname=file_name + ".mp4")
+    except Exception as e:
+        empty_folder("downloads")
+        empty_folder("frames") 
+        empty_folder("chats") 
+        empty_folder("svgs")   
+        remove_file("output.mp4")
+        remove_file("file.txt")
+        print(e)
 
-def empty_folder(folder):
-    for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)  # delete file or symlink
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)  # delete folder
-        except Exception as e:
-            print(f"Failed to delete {file_path}: {e}")
-
-def remove_file(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        print("File deleted.")
 
 empty_folder("downloads")
 empty_folder("frames") 
