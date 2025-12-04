@@ -15,8 +15,34 @@ downloaded = set()
 # START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/8ab678ec2baf0cbcf1e315136084dcde33f2ebfd-1762191511958/"
 #START_URL = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/0a2f3631b67c280930e9b313a0d716ce597b7018-1762888173315"
 START_URL = input("Enter The Full Link of The Presentation: ")
-time = input("Enter The length of the video as a float example (1h30min -> use 1.5): ")
-VIDEO_LEN = float(time) if time else 0.0
+time = input("Enter The length of the video (example 1h30 or 80m): ")
+
+def parse_time(time :str)->int:
+    seconds = 0.0
+    try:
+        index_h = list(time).index("h")
+        seconds += int(time[0:index_h]) * 3600.0
+        if len(time) > index_h + 1:
+            time = time[index_h + 1:]
+            if "m" in time and len(time) <= 3:
+                seconds += int(time[0:-1]) * 60
+            elif len(time) < 3:
+                seconds += int(time) * 60
+    except Exception as e:
+        print(e)
+        try:
+            index_m = list(time).index("m")
+            seconds += int(time[0:index_m]) * 60.0
+            print(list(time)[0:index_m], time[index_m])
+        except:
+            seconds = 0
+            print("wrong time, the full duration will be used")
+    return seconds
+
+VIDEO_LEN = parse_time(time)
+
+
+print(VIDEO_LEN)
 
 @dataclass
 class SVG:
@@ -24,7 +50,6 @@ class SVG:
     start : float
     end: float
 
-print(VIDEO_LEN)
 
 # MEDIA_EXTENSIONS = (".webm", ".xml", ".json")
 MEDIA_EXTENSIONS = (".webm",".xml", ".json", "shapes.svg")
@@ -62,8 +87,8 @@ def download_file(url):
         print(f"Downloading: {url}")
         if filename.endswith(".webm"):
             cmd = []
-            if VIDEO_LEN > 0.20:
-                cmd = ["ffmpeg", "-ss", "0", "-i", url,"-t", f"{int(VIDEO_LEN * 3600)}", "-c", "copy", f"{path}"]
+            if VIDEO_LEN > 0:
+                cmd = ["ffmpeg", "-ss", "0", "-i", url,"-t", f"{VIDEO_LEN}", "-c", "copy", f"{path}"]
             else:
                 cmd = ["ffmpeg", "-ss", "0", "-i", url, "-c", "copy", f"{path}"]
             subprocess.run(cmd, check=True)     
