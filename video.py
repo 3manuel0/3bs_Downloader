@@ -14,18 +14,16 @@ class Chat:
 
 def add_svgs(images, video_file, out_vid=None):
 
-    temp_out = video_file + ".tmp.mp4"   # temporary file
+    temp_out = video_file + ".tmp.mp4"
 
     cmd = ["ffmpeg", "-y", "-i", video_file]
 
-    # Add all images as inputs
     for img, _, _ in images:
         cmd += ["-i", img]
 
     filter_complex = ""
     last = "[0:v]"
 
-    # images = [(img_path, start_time, end_time), ...]
     for i, (img, start, end) in enumerate(images):
         tag_out = f"[tmp{i+1}]" if i < len(images)-1 else ""
         filter_complex += (
@@ -41,9 +39,6 @@ def add_svgs(images, video_file, out_vid=None):
         subprocess.run(cmd, check=True)
         os.replace(temp_out, video_file)
 
-    # Replace original file
-
-
     print("Done! Edited original file:", video_file)
 
 
@@ -51,18 +46,11 @@ def add_svgs(images, video_file, out_vid=None):
 
 def add_chat(images, video_file, output_file, pad_left = 300):
 
-    # -------------------------
-    # BUILD FFmpeg COMMAND
-    # -------------------------
-
-    # 1. start command with main video
     cmd = ["ffmpeg", "-y", "-i", video_file]
 
-    # 2. add all images as inputs
     for img, _, _ in images:
         cmd += ["-i", img]
 
-    # 3. build filter_complex
     filter_complex = f"[0:v]pad=iw+{pad_left}:ih:{pad_left}:0[base];"
     last = "[base]"
 
