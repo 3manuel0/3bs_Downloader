@@ -1,7 +1,6 @@
 # About
 
-3bs_Downloader is a public BigBlueButton videos downloader.
-I created it to help me download school presentations (classes) so I can watch them later, as they are not always available after some time.
+3bs_Downloader creates a video using public links from BigBlueButton presentations. This tool helps you download and save school presentations and classes, making them accessible for later viewing.
 
 # Project Setup & Usage
 
@@ -15,7 +14,7 @@ You will need the following installed on your system:
 
 ---
 
-<!-- TODO: FIX THIS USELESS README -->
+<!-- TODO: FIX THIS USELESS README LATER -->
 
 ## Prepare your environment
 
@@ -58,7 +57,7 @@ pip install -r req.txt
 make sure you're always using venv or maybe you can use other methodes like `Conda` then:
 
 ```bash
-    python main.py
+python main.py
 ```
 
 you will be prompted to enter the link:
