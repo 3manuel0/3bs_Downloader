@@ -42,31 +42,86 @@ def add_svgs(images, video_file, out_vid=None):
     print("Done! Edited original file:", video_file)
 
 
+def add_chat(images, video_file, output_file, pad_left=300):
 
+    cmd = [
+        "ffmpeg",
+        "-y",
 
-def add_chat(images, video_file, output_file, pad_left = 300):
+        # Limit filter processing
+        "-filter_complex_threads", "1",
 
-    cmd = ["ffmpeg", "-y", "-i", video_file]
+        "-i", video_file
+    ]
 
     for img, _, _ in images:
         cmd += ["-i", img]
 
-    filter_complex = f"[0:v]pad=iw+{pad_left}:ih:{pad_left}:0[base];"
+    filter_complex = (
+        f"[0:v]pad=iw+{pad_left}:ih:{pad_left}:0[base];"
+    )
+
     last = "[base]"
 
     for i, (img, start, duration) in enumerate(images):
         end = start + duration
-        if i == len(images)-1:
-            filter_complex += f"{last}[{i+1}:v]overlay=0:0:enable='between(t,{start},{end})'"
+
+        if i == len(images) - 1:
+            filter_complex += (
+                f"{last}[{i+1}:v]"
+                f"overlay=0:0:"
+                f"enable='between(t,{start},{end})'"
+            )
         else:
             out = f"[tmp{i+1}]"
-            filter_complex += f"{last}[{i+1}:v]overlay=0:0:enable='between(t,{start},{end})'{out};"
+
+            filter_complex += (
+                f"{last}[{i+1}:v]"
+                f"overlay=0:0:"
+                f"enable='between(t,{start},{end})'"
+                f"{out};"
+            )
+
             last = out
 
-    cmd += ["-filter_complex", filter_complex, "-c:a", "copy", output_file]
+    cmd += [
+        "-filter_complex", filter_complex,
+        "-c:v", "libx264",
+        "-threads", "2",
+        "-preset", "ultrafast",
+        "-c:a", "copy",
+        output_file
+    ]
 
-    subprocess.run(cmd)
+    subprocess.run(cmd, check=True)
+
     print("Done! Output saved to", output_file)
+
+
+
+# def add_chat(images, video_file, output_file, pad_left = 300):
+
+#     cmd = ["ffmpeg", "-y", "-i", video_file]
+
+#     for img, _, _ in images:
+#         cmd += ["-i", img]
+
+#     filter_complex = f"[0:v]pad=iw+{pad_left}:ih:{pad_left}:0[base];"
+#     last = "[base]"
+
+#     for i, (img, start, duration) in enumerate(images):
+#         end = start + duration
+#         if i == len(images)-1:
+#             filter_complex += f"{last}[{i+1}:v]overlay=0:0:enable='between(t,{start},{end})'"
+#         else:
+#             out = f"[tmp{i+1}]"
+#             filter_complex += f"{last}[{i+1}:v]overlay=0:0:enable='between(t,{start},{end})'{out};"
+#             last = out
+
+#     cmd += ["-filter_complex", filter_complex, "-c:a", "copy", output_file]
+
+#     subprocess.run(cmd)
+#     print("Done! Output saved to", output_file)
 
 
 def wrap_text(text, font, max_width):

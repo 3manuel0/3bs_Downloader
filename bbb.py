@@ -1,9 +1,11 @@
 #TODO: I want to refactor this project into a better version, Soon...
 
 import requests
+import os
 from urllib.parse import urljoin, urlparse
 import xml.etree.ElementTree as ET
 import subprocess
+from video import generate_all_chats
 
 def get_presentation_base(session_url : str):
     parsed = urlparse(session_url)
@@ -16,7 +18,27 @@ def get_presentation_base(session_url : str):
         f"/presentation/{session_id}/"
     )
 
+def download_file(url: str, video_len: int):
+    try:
+        filename = url.split("/")[-1]
+        path = os.path.join("downloads", filename)
 
+        print(f"Downloading: {url}")
+        if filename.endswith(".webm"):
+            cmd = []
+            if video_len > 0:
+                cmd = ["ffmpeg", "-ss", "0", "-i", url,"-t", f"{video_len}", "-c", "copy", f"{path}"]
+            else:
+                cmd = ["ffmpeg", "-ss", "0", "-i", url, "-c", "copy", f"{path}"]
+            subprocess.run(cmd, check=True)     
+        else:
+            r = requests.get(url, stream=True, timeout=20)
+            r.raise_for_status()
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(8192):
+                    f.write(chunk)
+    except Exception as e:
+        print(f"Failed: {url} -> {e}")
 
 
 def check(url, session):
@@ -66,17 +88,21 @@ for rel in shapes_refs(base, session):
 
 deskshare_url = urljoin(base, "deskshare/deskshare.webm")
 webcams_url = urljoin(base, "video/webcams.webm")
+download_file(urljoin(base, "metadata.xml"),0)
+download_file(urljoin(base, "slides_new.xml",), 0)
 
-subprocess.run([
-    "ffmpeg",
-    "-y",
-    "-i", deskshare_url,
-    "-i", webcams_url,
-    "-map", "0:v:0",
-    "-map", "1:a:0",
-    "-c:v", "copy",
-    "-c:a", "copy",
-    "-shortest",
-    "pre_chat1.mp4"
-], check=True)
 
+# subprocess.run([
+#     "ffmpeg",
+#     "-y",
+#     "-i", deskshare_url,
+#     "-i", webcams_url,
+#     "-map", "0:v:0",
+#     "-map", "1:a:0",
+#     "-c:v", "copy",
+#     "-c:a", "copy",
+#     "-shortest",
+#     "pre_chat.mp4"
+# ], check=True)
+
+generate_all_chats("pre_chat.mp4", "out.mp4");
