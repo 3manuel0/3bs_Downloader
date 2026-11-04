@@ -1,42 +1,44 @@
 #TODO: I want to refactor this project into a better version, Soon...
 
 import requests
+from video import generate_all_chats, add_svgs
 import os
 from urllib.parse import urljoin, urlparse
 import xml.etree.ElementTree as ET
 import subprocess
-from video import generate_all_chats
+
+
+session = requests.Session()
+url = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/f33e8d292a1a6a74eebafb39f3f73b5d77acc6a0-1793301368635"
+
+
+
+
 
 def get_presentation_base(session_url : str):
     parsed = urlparse(session_url)
 
     session_id = parsed.path.rstrip("/").split("/")[-1]
-    print(f"{parsed.scheme}://{parsed.netloc}"
-        f"/presentation/{session_id}/")
+    # print(f"{parsed.scheme}://{parsed.netloc}"
+    #     f"/presentation/{session_id}/")
     return (
         f"{parsed.scheme}://{parsed.netloc}"
         f"/presentation/{session_id}/"
     )
 
-def download_file(url: str, video_len: int):
+base = get_presentation_base(url)
+
+def download_file(url: str):
     try:
         filename = url.split("/")[-1]
         path = os.path.join("downloads", filename)
 
         print(f"Downloading: {url}")
-        if filename.endswith(".webm"):
-            cmd = []
-            if video_len > 0:
-                cmd = ["ffmpeg", "-ss", "0", "-i", url,"-t", f"{video_len}", "-c", "copy", f"{path}"]
-            else:
-                cmd = ["ffmpeg", "-ss", "0", "-i", url, "-c", "copy", f"{path}"]
-            subprocess.run(cmd, check=True)     
-        else:
-            r = requests.get(url, stream=True, timeout=20)
-            r.raise_for_status()
-            with open(path, "wb") as f:
-                for chunk in r.iter_content(8192):
-                    f.write(chunk)
+        r = requests.get(url, stream=True, timeout=20)
+        r.raise_for_status()
+        with open(path, "wb") as f:
+            for chunk in r.iter_content(8192):
+                f.write(chunk)
     except Exception as e:
         print(f"Failed: {url} -> {e}")
 
@@ -77,9 +79,7 @@ def shapes_refs(base, session):
         for e in root.findall(".//{http://www.w3.org/2000/svg}image")
     })
 # Then probe the discovered refs too:
-session = requests.Session()
-url = "https://visioconference.supmti.ac.ma/playback/presentation/2.3/f33e8d292a1a6a74eebafb39f3f73b5d77acc6a0-1793301368635"
-base = get_presentation_base(url)
+
 probe(base, session)
 
 for rel in shapes_refs(base, session):
@@ -88,8 +88,8 @@ for rel in shapes_refs(base, session):
 
 deskshare_url = urljoin(base, "deskshare/deskshare.webm")
 webcams_url = urljoin(base, "video/webcams.webm")
-download_file(urljoin(base, "metadata.xml"),0)
-download_file(urljoin(base, "slides_new.xml",), 0)
+# download_file(urljoin(base, "metadata.xml"))
+# download_file(urljoin(base, "slides_new.xml",))
 
 
 # subprocess.run([
@@ -104,5 +104,45 @@ download_file(urljoin(base, "slides_new.xml",), 0)
 #     "-shortest",
 #     "pre_chat.mp4"
 # ], check=True)
+# test = check(urljoin(base, "deskshare/deskshare.webm"), session)
+if(check(urljoin(base, "deskshare/deskshare.webm"), session)[0] == 206):
+    print("deskshare found", check(urljoin(base, "deskshare/deskshare.webm"), session)[0]);
+# if not os.path.exists("downloads/deskshare.webm"):
+#     svgs = get_svgs()
+#     images = []
+#     for i, svg in enumerate(svgs):
+#         print("https://visioconference.supmti.ac.ma/presentation/" + id + "/" + svg.href)
 
-generate_all_chats("pre_chat.mp4", "out.mp4");
+#         if svg.href.endswith(".svg"):
+#             svg_url = "https://visioconference.supmti.ac.ma/presentation/" + id + "/"  + svg.href
+#             print(svg_url)
+#             # converting svg into png whith high dpi 
+#             png_data = cairosvg.svg2png(url=svg_url, dpi=300)
+            
+#             # reading png insuring it's rgba
+#             img = Image.open(BytesIO(png_data)).convert("RGBA")
+#             # creating new white background
+#             bg = Image.new("RGB", img.size, (255, 255, 255))  
+#             # put the img on top of the mask 
+#             bg.paste(img, mask=img.split()[3])  
+#             bg = bg.resize((1280, 720), Image.LANCZOS)
+#             img_name = f"{i:04d}.png"
+#             images.append((os.path.join("frames", img_name), svg.start, svg.end))
+#             bg.save(f"frames/{img_name}")
+#     try:
+#         subprocess.run([
+#             "ffmpeg",
+#             "-y",
+#             "-i", "downloads/webcams.webm",
+#             "-vf", "scale=1280:720",
+#             "-preset", "ultrafast",
+#             "-c:v", "libx264",
+#             "-c:a", "copy",
+#             "output.mp4"
+#         ])
+
+#         video.add_svgs(images, "output.mp4", "pre_chat.mp4")
+
+
+
+# generate_all_chats("pre_chat.mp4", "out.mp4");

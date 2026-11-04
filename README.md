@@ -1,6 +1,6 @@
 # About
 
-3bs_Downloader creates a video using public links from BigBlueButton presentations. This tool helps you download and save school presentations and classes, making them accessible for later viewing.
+3bs_Downloader creates a video using public links from BigBlueButton (Specific for SUPMTI) presentations. This tool helps you download and save school presentations and classes, making them accessible for later viewing.
 
 # Project Setup & Usage
 

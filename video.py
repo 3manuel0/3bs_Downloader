@@ -131,7 +131,7 @@ def wrap_text(text, font, max_width):
     words = text.split()
     lines = []
     current_line = ""
-
+    
     for word in words:
         test_line = f"{current_line} {word}".strip()
 
